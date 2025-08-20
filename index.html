@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Disaster Management System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        :root {
+            --safe-color: #28a745;
+            --warning-color: #ffc107;
+            --critical-color: #dc3545;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background-color: #0d6efd;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        
+        .status-indicator {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-safe {
+            background-color: var(--safe-color);
+        }
+        
+        .status-warning {
+            background-color: var(--warning-color);
+        }
+        
+        .status-critical {
+            background-color: var(--critical-color);
+        }
+        
+        .water-level-gauge {
+            height: 30px;
+            background: linear-gradient(90deg, var(--safe-color) 0%, var(--warning-color) 50%, var(--critical-color) 100%);
+            border-radius: 15px;
+            position: relative;
+            margin: 15px 0;
+        }
+        
+        .gauge-needle {
+            position: absolute;
+            top: -5px;
+            width: 4px;
+            height: 40px;
+            background-color: #000;
+            transform: translateX(-50%);
+        }
+        
+        #map {
+            height: 300px;
+            border-radius: 10px;
+        }
+        
+        .alert-log {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .last-updated {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        footer {
+            background-color: #343a40;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-water me-2"></i>Flood Disaster Management System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#alerts">Alerts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- Dashboard Section -->
+        <section id="dashboard">
+            <h2 class="mb-4">Real-time Monitoring Dashboard</h2>
+            
+            <div class="row">
+                <!-- Water Level Status Card -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Water Level Status</h5>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="status-indicator" id="status-indicator"></span>
+                                <span class="fw-bold" id="status-text">Loading...</span>
+                            </div>
+                            <div class="water-level-gauge">
+                                <div class="gauge-needle" id="gauge-needle"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>0 cm</span>
+                                <span id="current-level">-- cm</span>
+                                <span>200 cm</span>
+                            </div>
+                            <p class="last-updated mt-3">Last updated: <span id="last-updated-time">--</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistics Card -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">System Statistics</h5>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Alerts Today:</span>
+                                <span class="fw-bold" id="alerts-today">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>SMS Sent:</span>
+                                <span class="fw-bold" id="sms-sent">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Calls Made:</span>
+                                <span class="fw-bold" id="calls-made">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>System Uptime:</span>
+                                <span class="fw-bold" id="system-uptime">100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map Card -->
+                <div class="col-md-12 col-lg-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Sensor Location</h5>
+                            <div id="map"></div>
+                            <p class="mt-2 text-center" id="location-text">Central Monitoring Station</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Live Updates Section -->
+        <section class="mt-5">
+            <h2 class="mb-4">Live Sensor Readings</h2>
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Sensor ID</th>
+                                    <th>Location</th>
+                                    <th>Water Level (cm)</th>
+                                    <th>Status</th>
+                                    <th>Last Reading</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sensor-readings">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="last-updated">Auto-refreshing every 10 seconds</div>
+                        <button id="refresh-btn" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Alert Log Section -->
+        <section id="alerts" class="mt-5">
+            <h2 class="mb-4">Alert History</h2>
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive alert-log">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Alert Type</th>
+                                    <th>Message</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alert-log-table">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- About Section -->
+        <section id="about" class="mt-5">
+            <h2 class="mb-4">About the System</h2>
+            <div class="card">
+                <div class="card-body">
+                    <h5>System Components</h5>
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-microchip fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6>ESP32 Microcontroller</h6>
+                                    <p>The main processing unit that collects data from sensors and communicates with the central server.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-tint fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6>Water Level Sensors</h6>
+                                    <p>Ultrasonic and pressure sensors that accurately measure water levels in real-time.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-sim-card fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6>GSM Module</h6>
+                                    <p>Enables SMS and call alerts to authorities and residents in affected areas.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-solar-panel fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6>Solar Power System</h6>
+                                    <p>Provides continuous power supply even during electricity outages.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4">How It Works</h5>
+                    <p>The Flood Disaster Management System continuously monitors water levels using networked sensors. When levels exceed predetermined thresholds, the system automatically sends alerts via SMS, automated calls, and updates this dashboard. This enables authorities to take timely action and keep residents informed.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Contact Section -->
+        <section id="contact" class="mt-5 mb-5">
+            <h2 class="mb-4">Emergency Contacts</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Administrator</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <i class="fas fa-user me-2"></i> Nimma Lokesh Reddy
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-phone me-2"></i>9440108767
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-envelope me-2"></i>nimmalokesh7@gmail.com
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Emergency Services</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <i class="fas fa-truck me-2"></i>Flood Rescue and Seasonal Illness Helpline: 9030227324, 040-2465119
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-house-damage me-2"></i>GHMC Disaster Management: 9000113667
+                                </li>
+                                <li class="list-group-item">
+                                    <i class="fas fa-ambulance me-2"></i>Emergency Services: 108
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="py-4 mt-5">
+        <div class="container">
+            <div class="text-center">
+                <p class="mb-0">Developed by DTI G-Team @KLHB</p>
+                <p class="mb-0">© 2023 Flood Disaster Management System. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS for maps -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom JavaScript -->
+    <script>
+        // Initialize map
+        function initMap() {
+            const map = L.map('map').setView([51.505, -0.09], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Try to get user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const userLocation = [position.coords.latitude, position.coords.longitude];
+                        map.setView(userLocation, 13);
+                        L.marker(userLocation).addTo(map)
+                            .bindPopup('Your location')
+                            .openPopup();
+                            
+                        document.getElementById('location-text').textContent = 
+                            `Approximate location: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                    },
+                    function(error) {
+                        // Use default location if geolocation fails
+                        const defaultLocation = [51.505, -0.09];
+                        L.marker(defaultLocation).addTo(map)
+                            .bindPopup('Central Monitoring Station')
+                            .openPopup();
+                    }
+                );
+            } else {
+                // Geolocation not supported
+                const defaultLocation = [51.505, -0.09];
+                L.marker(defaultLocation).addTo(map)
+                    .bindPopup('Central Monitoring Station')
+                    .openPopup();
+                    
+                document.getElementById('location-text').textContent = 
+                    "Geolocation not supported by this browser. Showing default location.";
+            }
+        }
+        
+        // Initialize data
+        let currentWaterLevel = 45;
+        let alertCountToday = 3;
+        let smsSent = 12;
+        let callsMade = 8;
+        
+        // Sensor data
+        const sensors = [
+            { id: 'S001', location: 'River North', level: 45, status: 'safe', lastReading: new Date() },
+            { id: 'S002', location: 'River South', level: 68, status: 'warning', lastReading: new Date() },
+            { id: 'S003', location: 'Lake East', level: 35, status: 'safe', lastReading: new Date() },
+            { id: 'S004', location: 'Dam Site', level: 92, status: 'critical', lastReading: new Date() }
+        ];
+        
+        // Alert log data
+        const alertLog = [
+            { datetime: new Date(Date.now() - 3600000), type: 'SMS Sent', message: 'Warning: Water levels rising at River South', status: 'Delivered' },
+            { datetime: new Date(Date.now() - 7200000), type: 'Call Made', message: 'Critical: Evacuation advised near Dam Site', status: 'Delivered' },
+            { datetime: new Date(Date.now() - 10800000), type: 'Website Update', message: 'Status changed to Warning at River South', status: 'Completed' },
+            { datetime: new Date(Date.now() - 14400000), type: 'SMS Sent', message: 'All clear: Water levels normal at River North', status: 'Delivered' },
+            { datetime: new Date(Date.now() - 18000000), type: 'Website Update', message: 'System maintenance completed', status: 'Completed' }
+        ];
+        
+        // Update dashboard with current data
+        function updateDashboard() {
+            // Update water level and status
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const gaugeNeedle = document.getElementById('gauge-needle');
+            const currentLevelElement = document.getElementById('current-level');
+            
+            currentLevelElement.textContent = `${currentWaterLevel} cm`;
+            
+            // Calculate needle position (0-200cm range)
+            const needlePosition = Math.min(100, (currentWaterLevel / 200) * 100);
+            gaugeNeedle.style.left = `${needlePosition}%`;
+            
+            // Determine status
+            if (currentWaterLevel < 50) {
+                statusIndicator.className = 'status-indicator status-safe';
+                statusText.textContent = 'Safe';
+                statusText.className = 'fw-bold text-success';
+            } else if (currentWaterLevel >= 50 && currentWaterLevel < 80) {
+                statusIndicator.className = 'status-indicator status-warning';
+                statusText.textContent = 'Warning';
+                statusText.className = 'fw-bold text-warning';
+            } else {
+                statusIndicator.className = 'status-indicator status-critical';
+                statusText.textContent = 'Critical';
+                statusText.className = 'fw-bold text-danger';
+            }
+            
+            // Update statistics
+            document.getElementById('alerts-today').textContent = alertCountToday;
+            document.getElementById('sms-sent').textContent = smsSent;
+            document.getElementById('calls-made').textContent = callsMade;
+            
+            // Update last updated time
+            document.getElementById('last-updated-time').textContent = new Date().toLocaleTimeString();
+        }
+        
+        // Update sensor readings table
+        function updateSensorReadings() {
+            const readingsTable = document.getElementById('sensor-readings');
+            readingsTable.innerHTML = '';
+            
+            sensors.forEach(sensor => {
+                const row = document.createElement('tr');
+                
+                let statusClass = '';
+                let statusText = '';
+                
+                if (sensor.level < 50) {
+                    statusClass = 'text-success';
+                    statusText = 'Safe';
+                } else if (sensor.level >= 50 && sensor.level < 80) {
+                    statusClass = 'text-warning';
+                    statusText = 'Warning';
+                } else {
+                    statusClass = 'text-danger';
+                    statusText = 'Critical';
+                }
+                
+                row.innerHTML = `
+                    <td>${sensor.id}</td>
+                    <td>${sensor.location}</td>
+                    <td>${sensor.level} cm</td>
+                    <td class="${statusClass}">${statusText}</td>
+                    <td>${sensor.lastReading.toLocaleTimeString()}</td>
+                `;
+                
+                readingsTable.appendChild(row);
+            });
+        }
+        
+        // Update alert log table
+        function updateAlertLog() {
+            const alertTable = document.getElementById('alert-log-table');
+            alertTable.innerHTML = '';
+            
+            alertLog.forEach(alert => {
+                const row = document.createElement('tr');
+                
+                let statusBadge = '';
+                if (alert.status === 'Delivered') {
+                    statusBadge = '<span class="badge bg-success">Delivered</span>';
+                } else {
+                    statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+                }
+                
+                row.innerHTML = `
+                    <td>${alert.datetime.toLocaleString()}</td>
+                    <td>${alert.type}</td>
+                    <td>${alert.message}</td>
+                    <td>${statusBadge}</td>
+                `;
+                
+                alertTable.appendChild(row);
+            });
+        }
+        
+        // Simulate data changes
+        function simulateDataChange() {
+            // Randomly change water level (±5cm)
+            const change = Math.floor(Math.random() * 11) - 5; // -5 to +5
+            currentWaterLevel = Math.max(0, Math.min(200, currentWaterLevel + change));
+            
+            // Update sensor readings with random changes
+            sensors.forEach(sensor => {
+                const sensorChange = Math.floor(Math.random() * 11) - 5;
+                sensor.level = Math.max(0, Math.min(200, sensor.level + sensorChange));
+                
+                // Update status based on new level
+                if (sensor.level < 50) {
+                    sensor.status = 'safe';
+                } else if (sensor.level >= 50 && sensor.level < 80) {
+                    sensor.status = 'warning';
+                } else {
+                    sensor.status = 'critical';
+                }
+                
+                sensor.lastReading = new Date();
+            });
+            
+            // Occasionally add new alerts when status changes
+            if (Math.random() > 0.7) {
+                const sensor = sensors[Math.floor(Math.random() * sensors.length)];
+                
+                let message = '';
+                let type = '';
+                
+                if (sensor.status === 'warning') {
+                    message = `Warning: Water levels rising at ${sensor.location}`;
+                    type = 'SMS Sent';
+                    smsSent++;
+                    alertCountToday++;
+                } else if (sensor.status === 'critical') {
+                    message = `Critical: Evacuation advised near ${sensor.location}`;
+                    type = 'Call Made';
+                    callsMade++;
+                    alertCountToday++;
+                }
+                
+                if (message) {
+                    alertLog.unshift({
+                        datetime: new Date(),
+                        type: type,
+                        message: message,
+                        status: 'Delivered'
+                    });
+                    
+                    // Keep only recent alerts
+                    if (alertLog.length > 20) {
+                        alertLog.pop();
+                    }
+                }
+            }
+            
+            // Update all displays
+            updateDashboard();
+            updateSensorReadings();
+            updateAlertLog();
+        }
+        
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            updateDashboard();
+            updateSensorReadings();
+            updateAlertLog();
+            
+            // Set up periodic updates
+            setInterval(simulateDataChange, 10000); // Update every 10 seconds
+            
+            // Manual refresh button
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                simulateDataChange();
+            });
+        });
+    </script>
+</body>
+</html>
