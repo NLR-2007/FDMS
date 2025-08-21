@@ -125,7 +125,7 @@
     <div class="container my-4">
         <!-- Dashboard Section -->
         <section id="dashboard">
-            <h2 class="mb-4">Real-time Monitoring Dashboard</h2>
+            <h2 class="mb-4">Real-time Data Monitoring Dashboard</h2>
             
             <div class="row">
                 <!-- Water Level Status Card -->
@@ -420,9 +420,9 @@
         // Alert log data
         const alertLog = [
             { datetime: new Date(Date.now() - 3600000), type: 'SMS Sent', message: 'Warning: Water levels rising at River South', status: 'Delivered' },
-            { datetime: new Date(Date.now() - 7200000), type: 'Call Made', message: 'Critical: Evacuation advised near Dam Site', status: 'Delivered' },
+            // { datetime: new Date(Date.now() - 7200000), type: 'Call Made', message: 'Critical: Evacuation advised near Dam Site', status: 'Delivered' },
             { datetime: new Date(Date.now() - 10800000), type: 'Website Update', message: 'Status changed to Warning at River South', status: 'Completed' },
-            { datetime: new Date(Date.now() - 14400000), type: 'SMS Sent', message: 'All clear: Water levels normal at River North', status: 'Delivered' },
+            // { datetime: new Date(Date.now() - 14400000), type: 'SMS Sent', message: 'All clear: Water levels normal at River North', status: 'Delivered' },
             { datetime: new Date(Date.now() - 18000000), type: 'Website Update', message: 'System maintenance completed', status: 'Completed' }
         ];
         
@@ -606,6 +606,7 @@
 </body>
 
 </html>
+
 
 
 
